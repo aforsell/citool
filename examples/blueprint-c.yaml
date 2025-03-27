@@ -1,0 +1,38 @@
+language: c
+build_system: make
+build_commands:
+  - make
+test_commands:
+  - make test
+static_analysis_commands:
+  - cppcheck src/
+artifacts:
+  paths:
+    - bin/
+    - build/
+deployments:
+  - method: rsync
+    target_server: buildhost.example.com
+    target_path: /opt/releases/
+    artifact_path: bin/
+    deploy_user: deployer
+caching:
+  enabled: true
+  paths:
+    - build/
+  key: c-cache
+incremental_build:
+  enabled: true
+  trigger_paths:
+    - src/
+    - include/
+branching:
+  strategy: gitflow
+  protected_branches:
+    - main
+    - dev
+tagging:
+  scheme: semantic
+  prefix: v
+ci: gitlab
+env: dev

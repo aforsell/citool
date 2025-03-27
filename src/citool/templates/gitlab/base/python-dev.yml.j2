@@ -1,0 +1,80 @@
+stages:
+  - lint
+  - test
+  - build
+  {% if deployments %}- deploy{% endif %}
+
+{% if lint_commands %}
+lint:
+  stage: lint
+  script:
+    {% for cmd in lint_commands %}
+    - {{ cmd }}
+    {% endfor %}
+{% endif %}
+
+test:
+  stage: test
+  script:
+    {% for cmd in test_commands %}
+    - {{ cmd }}
+    {% endfor %}
+  coverage: /(\d+)%/
+
+build:
+  stage: build
+  script:
+    {% for cmd in build_commands %}
+    - {{ cmd }}
+    {% endfor %}
+
+  {% if artifacts %}
+  artifacts:
+    paths:
+      {% for path in artifacts.paths %}
+      - {{ path }}
+      {% endfor %}
+  {% endif %}
+
+  {% if branching or tagging %}
+  rules:
+    {% if tagging.scheme == "semantic" %}
+    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/'
+      when: always
+    {% endif %}
+    {% if branching.protected_branches %}
+    {% for branch in branching.protected_branches %}
+    - if: '$CI_COMMIT_BRANCH == "{{ branch }}"'
+      when: always
+    {% endfor %}
+    {% endif %}
+  {% endif %}
+
+{% for deploy in deployments %}
+{% if deploy.method == "docker" %}
+docker_deploy:
+  stage: deploy
+  script:
+    - docker login {{ deploy.registry }}
+    - docker build -t {{ deploy.registry }}/{{ deploy.image_name }}:{{ deploy.tag }} .
+    - docker push {{ deploy.registry }}/{{ deploy.image_name }}:{{ deploy.tag }}
+
+{% elif deploy.method == "ssh" %}
+ssh_deploy:
+  stage: deploy
+  script:
+    - ssh {{ deploy.deploy_user or 'root' }}@{{ deploy.target_server }} '
+      cd {{ deploy.target_path }} &&
+      {% for cmd in deploy.commands %}
+      {{ cmd }} &&
+      {% endfor %}
+      echo "Deploy complete"
+    '
+
+{% elif deploy.method == "rsync" %}
+rsync_deploy:
+  stage: deploy
+  script:
+    - rsync -avz {{ deploy.artifact_path }} {{ deploy.deploy_user or 'root' }}@{{ deploy.target_server }}:{{ deploy.target_path }}
+{% endif %}
+{% endfor %}

@@ -1,0 +1,42 @@
+{
+    "language": "python",
+    "build_system": "setuptools",
+    "build_commands": ["python setup.py install"],
+    "test_commands": ["pytest"],
+    "lint_commands": ["ruff check ."],
+    "static_analysis_commands": ["bandit -r src"],
+    "security_scan_commands": ["pip-audit"],
+    "artifacts": {
+      "paths": ["dist/", "build/"]
+    },
+    "deployments": [
+      {
+        "method": "ssh",
+        "target_server": "prod.example.com",
+        "target_path": "/opt/myapp/",
+        "deploy_user": "deploy",
+        "commands": ["systemctl restart myapp"]
+      }
+    ],
+    "caching": {
+      "enabled": true,
+      "paths": [".venv/", "__pycache__/"],
+      "key": "python-cache"
+    },
+    "incremental_build": {
+      "enabled": true,
+      "trigger_paths": ["src/", "tests/"]
+    },
+    "branching": {
+      "strategy": "gitflow",
+      "protected_branches": ["main", "dev"],
+      "release_branch_pattern": "release/*"
+    },
+    "tagging": {
+      "scheme": "semantic",
+      "prefix": "v"
+    },
+    "ci": "gitlab",
+    "env": "dev"
+  }
+  

@@ -1,0 +1,2 @@
+all:
+\techo "Compiling C..."

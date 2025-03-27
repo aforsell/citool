@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+MIN_PYTHON_VERSION="3.13"
+
+check_python_version() {
+    PYTHON_COMMAND=$1
+    VERSION=$($PYTHON_COMMAND -c 'import sys; print(".".join(map(str, sys.version_info[:3])))')
+    if [[ $(printf '%s\n' "$MIN_PYTHON_VERSION" "$VERSION" | sort -V | head -n1) == "$MIN_PYTHON_VERSION" ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+if command -v python3 &>/dev/null && check_python_version python3; then
+    PYTHON_EXEC="python3"
+elif command -v python &>/dev/null && check_python_version python; then
+    PYTHON_EXEC="python"
+else
+    echo "Error: Python ${MIN_PYTHON_VERSION} or higher is required and not found." >&2
+    exit 1
+fi
+
+exec "$PYTHON_EXEC" "$(dirname "$0")"/../src/citool/main.py "$@"

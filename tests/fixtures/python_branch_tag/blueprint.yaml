@@ -1,0 +1,27 @@
+language: python
+build_system: setuptools
+build_commands:
+  - python setup.py install
+test_commands:
+  - pytest
+
+ci:
+  platform: gitlab
+  output_path: .gitlab-ci.yml
+
+env: dev
+
+branching:
+  strategy: gitflow
+  protected_branches:
+    - main
+    - develop
+  release_branch_pattern: "^release/.*"
+
+tagging:
+  scheme: semantic
+  prefix: "v"
+
+artifacts:
+  paths:
+    - dist/

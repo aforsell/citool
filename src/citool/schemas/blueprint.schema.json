@@ -1,0 +1,218 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "citool Blueprint Schema",
+    "description": "Defines the structure of blueprint configuration files for citool.",
+    "type": "object",
+    "required": ["language", "build_system", "build_commands", "ci", "env"],
+    "properties": {
+      "language": {
+        "type": "string",
+        "enum": ["python", "java", "nodejs", "c", "cpp"],
+        "description": "Primary programming language used by the project."
+      },
+      "build_system": {
+        "type": "string",
+        "enum": ["make", "cmake", "setuptools", "poetry", "pip", "npm", "yarn", "maven", "gradle"],
+        "description": "Build system or package manager used by the project."
+      },
+      "build_commands": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Shell commands to build the project."
+      },
+      "test_commands": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Shell commands to run tests."
+      },
+      "lint_commands": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Shell commands for linting or formatting."
+      },
+      "static_analysis_commands": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Shell commands for static code analysis."
+      },
+      "security_scan_commands": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Shell commands for security scanning."
+      },
+      "artifacts": {
+        "type": "object",
+        "description": "Files or directories to store as build artifacts.",
+        "properties": {
+          "paths": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Paths to include as artifacts."
+          }
+        },
+        "required": ["paths"]
+      },
+      "deployments": {
+        "type": "array",
+        "description": "Deployment methods and configuration. Supports multiple deployments.",
+        "items": {
+          "type": "object",
+          "required": ["method"],
+          "properties": {
+            "method": {
+              "type": "string",
+              "description": "Deployment method identifier."
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": { "method": { "const": "docker" } }
+              },
+              "then": {
+                "required": ["registry", "image_name", "tag"],
+                "properties": {
+                  "registry": { "type": "string", "description": "Docker registry hostname." },
+                  "image_name": { "type": "string", "description": "Docker image name." },
+                  "tag": { "type": "string", "description": "Tag to apply to the built image." }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": { "method": { "const": "rsync" } }
+              },
+              "then": {
+                "required": ["target_server", "target_path", "artifact_path"],
+                "properties": {
+                  "target_server": { "type": "string", "description": "Remote host to deploy to." },
+                  "target_path": { "type": "string", "description": "Destination directory on the server." },
+                  "artifact_path": { "type": "string", "description": "Local path to copy." },
+                  "deploy_user": { "type": "string", "description": "SSH user (optional)." }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": { "method": { "const": "ssh" } }
+              },
+              "then": {
+                "required": ["target_server", "target_path"],
+                "properties": {
+                  "target_server": { "type": "string", "description": "Remote host to SSH into." },
+                  "target_path": { "type": "string", "description": "Working directory on the remote host." },
+                  "deploy_user": { "type": "string", "description": "SSH user (optional)." },
+                  "commands": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "description": "Shell commands to run on the remote host."
+                  }
+                }
+              }
+            },
+            {
+              "$comment": "More method-specific schemas can be added here."
+            }
+          ]
+        }
+      },
+      "caching": {
+        "type": "object",
+        "description": "Settings for caching between CI runs.",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable or disable caching."
+          },
+          "paths": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Paths to cache."
+          },
+          "key": {
+            "type": "string",
+            "description": "Optional cache key."
+          }
+        },
+        "required": ["paths"]
+      },
+      "incremental_build": {
+        "type": "object",
+        "description": "Enable and configure incremental build behavior.",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable or disable incremental builds."
+          },
+          "trigger_paths": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Paths that trigger a build when changed."
+          }
+        },
+        "required": ["trigger_paths"]
+      },
+      "branching": {
+        "type": "object",
+        "description": "Branching strategy and protection settings.",
+        "required": ["strategy"],
+        "properties": {
+          "strategy": {
+            "type": "string",
+            "enum": ["gitflow", "github", "custom"],
+            "description": "Branching model."
+          },
+          "protected_branches": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Branches that require protection."
+          },
+          "release_branch_pattern": {
+            "type": "string",
+            "description": "Pattern for naming release branches."
+          }
+        }
+      },
+      "tagging": {
+        "type": "object",
+        "description": "Version tagging strategy for releases.",
+        "required": ["scheme"],
+        "properties": {
+          "scheme": {
+            "type": "string",
+            "enum": ["semantic", "calendar", "incremental"],
+            "description": "Tagging scheme to use."
+          },
+          "prefix": {
+            "type": "string",
+            "description": "Optional tag prefix."
+          }
+        }
+      },
+      "ci": {
+        "type": "object",
+        "description": "Target CI platform and output config path.",
+        "required": ["platform", "output_path"],
+        "properties": {
+          "platform": {
+            "type": "string",
+            "enum": ["gitlab", "github"],
+            "description": "Target CI platform."
+          },
+          "output_path": {
+            "type": "string",
+            "description": "Where to write the generated CI file (relative to repo root)."
+          }
+        }
+      },
+      "env": {
+        "type": "string",
+        "description": "Deployment environment name.",
+        "examples": ["dev", "test", "staging", "prod"]
+      }
+    },
+    "additionalProperties": false
+  }
+  

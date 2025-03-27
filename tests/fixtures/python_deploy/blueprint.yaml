@@ -1,0 +1,28 @@
+language: python
+build_system: setuptools
+build_commands:
+  - python setup.py install
+test_commands:
+  - pytest
+
+ci:
+  platform: gitlab
+  output_path: .gitlab-ci.yml
+
+env: dev
+
+artifacts:
+  paths:
+    - dist/
+
+deployments:
+  - method: docker
+    registry: registry.example.com
+    image_name: my-python-app
+    tag: latest
+  - method: ssh
+    target_server: app.example.com
+    target_path: /opt/my-python-app
+    deploy_user: deployer
+    commands:
+      - systemctl restart app
