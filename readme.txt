@@ -10,15 +10,68 @@ or other systems.
 FEATURES
 -------------------------------------------------------------------------------
 
-- Automatic language and build system detection
-- Declarative blueprint configuration (blueprint.yaml or .json)
-- Template-based rendering of .gitlab-ci.yml or GitHub workflow files
-- Support for multiple deployment methods (Docker, SSH, rsync)
-- Customizable user templates by team, department, or use case
-- Blueprint schema validation
-- Optional integration with GitHub Linguist for language detection
-- Dry-run and verbose modes
-- Sensible default templates and file paths
+- AUTOMATIC STACK DETECTION
+  Detects programming language and build system from project contents using
+  GitHub Linguist (if available) or a reliable extension/filename heuristic
+  fallback. Supports Makefiles, pyproject.toml, pom.xml, etc.
+
+- BLUEPRINT-DRIVEN PIPELINE GENERATION
+  Uses simple, declarative blueprint files (YAML or JSON) that describe your
+  project’s CI/CD needs (language, build system, test/lint/deploy commands).
+  These blueprints are validated against a strict JSON Schema.
+
+- TEMPLATE-BASED OUTPUT
+  Uses Jinja2 templates to render CI configuration files for GitLab or GitHub
+  Actions, with full customization per language, environment, and template set.
+  Templates can include logic for deployment, branching, tagging, and more.
+
+- DEPLOYMENT STRATEGIES
+  Supports multiple deployments per blueprint, using:
+    - Docker: builds and pushes container images
+    - SSH: runs remote shell commands on a server
+    - Rsync: uploads artifacts to target paths
+
+- BRANCHING & TAGGING STRATEGIES
+  Encourages Git best practices using CI template logic based on:
+    - GitFlow or GitHub flow patterns
+    - Protected branch enforcement
+    - Release naming via semantic, calendar, or incremental tags
+
+- ADVANCED PIPELINE LOGIC
+  Blueprints can define:
+    - Caching behavior and paths
+    - Incremental build triggers
+    - Artifact paths to preserve
+    - Custom test/lint/scan stages
+
+- SCHEMA-ENFORCED BEST PRACTICES
+  Everything is driven by a versioned JSON Schema (draft 2020-12). It defines:
+    - Available languages, platforms, build systems
+    - Conditional rules for deployment methods
+    - Output paths per CI platform
+    - Examples and recommendations (e.g., environments)
+
+- USER-TEMPLATES & EXTENSIBILITY
+  Teams can define their own templates in `user_templates/`, structured the
+  same way as the default ones. These override the default “base” templates.
+
+- FULL CONTROL WITH MINIMAL SETUP
+  Command-line interface accepts:
+    --ci, --env, --template, --dry-run, --force, and more
+  You can auto-generate blueprints or write your own.
+  CI output paths are defined in the blueprint (not hardcoded).
+
+- DRY-RUN, VERBOSE, AND SAFE DEFAULTS
+  Preview rendered output with `--dry-run`
+  Never overwrite existing files unless `--force` is used
+  Logs and diagnostics printed separately from user output
+
+- BUILT FOR EXTENSION
+  Architecture supports:
+    - Future CI platforms
+    - Ability to convert pipelines from another CI platfoms (e.g., Jenkins)
+    - More granular template logic
+    - Modular schema updates via `$defs`
 
 -------------------------------------------------------------------------------
 QUICK START
@@ -49,16 +102,61 @@ They can be auto-detected or manually written.
 
 Example blueprint.yaml:
 
-    language: python
-    build_system: setuptools
-    build_commands:
-      - python setup.py install
-    test_commands:
-      - pytest
-    ci:
-      platform: gitlab
-      output_path: .gitlab-ci.yml
-    env: dev
+language: python
+build_system: setuptools
+build_commands:
+  - python setup.py install
+test_commands:
+  - pytest
+lint_commands:
+  - ruff check .
+static_analysis_commands:
+  - bandit -r src
+security_scan_commands:
+  - pip-audit
+
+artifacts:
+  paths:
+    - dist/
+    - build/
+
+deployments:
+  - method: ssh
+    target_server: prod.example.com
+    target_path: /opt/myapp/
+    deploy_user: deploy
+    commands:
+      - systemctl restart myapp
+
+caching:
+  enabled: true
+  paths:
+    - .venv/
+    - __pycache__/
+  key: python-cache
+
+incremental_build:
+  enabled: true
+  trigger_paths:
+    - src/
+    - tests/
+
+branching:
+  strategy: gitflow
+  protected_branches:
+    - main
+    - dev
+  release_branch_pattern: release/*
+
+tagging:
+  scheme: semantic
+  prefix: v
+
+ci:
+  platform: gitlab
+  output_path: .gitlab-ci.yml
+
+env: dev
 
 -------------------------------------------------------------------------------
 TEMPLATE STRUCTURE
@@ -165,6 +263,7 @@ Template
     - Customizable for team, use case, or environment
 
 Configuration hierarchy
+
             +---------------+
             |   Schema      |
             | (JSON-Schema) |
